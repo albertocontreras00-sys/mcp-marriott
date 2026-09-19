@@ -572,6 +572,16 @@ export async function searchHotels(params: {
     return results;
   }, Math.min(maxResults, 50));
 
+  if (hotels.length === 0) {
+    const bodyText = (await p.locator("body").innerText().catch(() => "")).toLowerCase();
+    const hasNoResultsMessage = /no hotels|no properties|no results|not available/.test(bodyText);
+    if (!hasNoResultsMessage) {
+      throw new Error(
+        "Marriott returned no hotel cards that could be parsed. The page may be blocked or its markup may have changed."
+      );
+    }
+  }
+
   return hotels;
 }
 
@@ -687,6 +697,12 @@ export async function getHotelDetails(hotelIdOrUrl: string): Promise<HotelDetail
       imageUrl: imgEl?.getAttribute("src") || imgEl?.getAttribute("data-src") || undefined,
     };
   });
+
+  if (!details.name) {
+    throw new Error(
+      "Marriott returned no hotel details that could be parsed. The page may be blocked or its markup may have changed."
+    );
+  }
 
   const id = hotelIdOrUrl.startsWith("http")
     ? hotelIdOrUrl.match(/\/([A-Z0-9]+)\.mi/)?.[1] || hotelIdOrUrl
@@ -816,6 +832,16 @@ export async function getRoomOptions(params: {
 
     return results;
   });
+
+  if (rooms.length === 0) {
+    const bodyText = (await p.locator("body").innerText().catch(() => "")).toLowerCase();
+    const hasNoAvailabilityMessage = /sold out|no availability|no rooms|not available/.test(bodyText);
+    if (!hasNoAvailabilityMessage) {
+      throw new Error(
+        "Marriott returned no room cards that could be parsed. The page may be blocked or its markup may have changed."
+      );
+    }
+  }
 
   return rooms;
 }
@@ -1419,6 +1445,19 @@ export async function getBonvoyStatus(): Promise<BonvoyStatus> {
       recentActivity: recentActivity.slice(0, 10),
     };
   });
+
+  const hasBonvoyData = Boolean(
+    status.memberNumber ||
+      status.memberName ||
+      status.tier ||
+      status.points !== undefined ||
+      status.nightsThisYear !== undefined
+  );
+  if (!hasBonvoyData) {
+    throw new Error(
+      "Marriott returned no verifiable Bonvoy account data. Login, MFA/device verification, or anti-bot protection may still be required."
+    );
+  }
 
   await saveCookies(ctx);
   return status;
