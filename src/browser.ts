@@ -258,6 +258,14 @@ async function isAccessDeniedPage(p: Page): Promise<boolean> {
   );
 }
 
+async function assertMarriottAccessible(p: Page, action: string): Promise<void> {
+  if (await isAccessDeniedPage(p)) {
+    throw new Error(
+      `Marriott returned an Access Denied or anti-bot page while trying to ${action}. No Marriott data was retrieved.`
+    );
+  }
+}
+
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function checkLoginStatus(): Promise<SessionInfo> {
@@ -470,6 +478,7 @@ export async function searchHotels(params: {
 
   await p.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT });
   await randomDelay(2000, 4000);
+  await assertMarriottAccessible(p, "search hotels");
 
   // Wait for hotel cards
   try {
@@ -580,6 +589,7 @@ export async function getHotelDetails(hotelIdOrUrl: string): Promise<HotelDetail
 
   await p.goto(url, { waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT });
   await randomDelay(1500, 3000);
+  await assertMarriottAccessible(p, "read hotel details");
 
   const details = await p.evaluate(() => {
     const name =
@@ -715,6 +725,7 @@ export async function getRoomOptions(params: {
   const url = `${MARRIOTT_BASE_URL}/hotels/rooms/${hotelId}.mi?${searchParams.toString()}`;
   await p.goto(url, { waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT });
   await randomDelay(2000, 3500);
+  await assertMarriottAccessible(p, "get room options");
 
   selectedHotelId = hotelId;
 
@@ -927,6 +938,7 @@ export async function checkout(params: {
     { waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT }
   );
   await randomDelay(2000, 3000);
+  await assertMarriottAccessible(p, "open checkout");
 
   try {
     // Fill guest info if provided
@@ -1025,6 +1037,8 @@ export async function getReservation(confirmationNumber?: string): Promise<Reser
     timeout: DEFAULT_TIMEOUT,
   });
   await randomDelay(1500, 2500);
+
+  await assertMarriottAccessible(p, "retrieve reservations");
 
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");
@@ -1126,6 +1140,8 @@ export async function modifyReservation(params: {
   );
   await randomDelay(1500, 2500);
 
+  await assertMarriottAccessible(p, "modify a reservation");
+
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");
   }
@@ -1201,6 +1217,8 @@ export async function cancelReservation(params: {
   );
   await randomDelay(1500, 2500);
 
+  await assertMarriottAccessible(p, "cancel a reservation");
+
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");
   }
@@ -1254,6 +1272,8 @@ export async function checkIn(params: {
     { waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT }
   );
   await randomDelay(1500, 2500);
+
+  await assertMarriottAccessible(p, "check in to a reservation");
 
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");
@@ -1322,6 +1342,8 @@ export async function getBonvoyStatus(): Promise<BonvoyStatus> {
     timeout: DEFAULT_TIMEOUT,
   });
   await randomDelay(1500, 2500);
+
+  await assertMarriottAccessible(p, "read Bonvoy status");
 
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");
@@ -1492,6 +1514,8 @@ export async function getStayHistory(params: {
     timeout: DEFAULT_TIMEOUT,
   });
   await randomDelay(1500, 2500);
+
+  await assertMarriottAccessible(p, "read stay history");
 
   if (p.url().includes("signin") || p.url().includes("login")) {
     throw new Error("Authentication required. Use login to sign in first.");

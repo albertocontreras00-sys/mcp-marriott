@@ -448,8 +448,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "status": {
-        const sessionInfo = await loadSessionInfo();
         const liveStatus = await checkLoginStatus();
+        const sessionInfo = await loadSessionInfo();
 
         return {
           content: [
