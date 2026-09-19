@@ -379,10 +379,11 @@ async function performLogin(
       waitUntil: "domcontentloaded",
     });
     await randomDelay(1000, 2000);
+    await assertMarriottAccessible(p, "start login");
 
     // Fill email
     const emailField = await p.waitForSelector(
-      'input[name="email"], input[type="email"], #email, #username',
+      'input[name="email"], input[type="email"], input[placeholder*="Email" i], input[placeholder*="Member" i], input[id*="email" i], input[id*="member" i], input[id*="username" i], #email, #username',
       { timeout: 10000 }
     );
     await emailField.click();
@@ -391,7 +392,7 @@ async function performLogin(
 
     // Fill password
     const passwordField = await p.waitForSelector(
-      'input[name="password"], input[type="password"], #password',
+      'input[name="password"], input[type="password"], input[placeholder*="Password" i], input[id*="password" i], #password',
       { timeout: 10000 }
     );
     await passwordField.click();
@@ -400,7 +401,7 @@ async function performLogin(
 
     // Submit
     const submitButton = await p.waitForSelector(
-      'button[type="submit"], input[type="submit"], .l-signin-btn, [data-testid="signin-submit"]',
+      'button[type="submit"], input[type="submit"], .l-signin-btn, [data-testid="signin-submit"], button:has-text("Sign In"), button:has-text("SIGN IN")',
       { timeout: 10000 }
     );
     await submitButton.click();
