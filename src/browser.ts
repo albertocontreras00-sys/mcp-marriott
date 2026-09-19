@@ -361,9 +361,9 @@ export async function initiateLogin(): Promise<{
   return {
     success: false,
     message: "Manual login required",
-    loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
+    loginUrl: `${MARRIOTT_BASE_URL}/default.mi`,
     instructions:
-      "Set MARRIOTT_EMAIL and MARRIOTT_PASSWORD environment variables for automatic login, or visit the loginUrl to sign in manually. After signing in, use status to verify.",
+      "Set MARRIOTT_EMAIL and MARRIOTT_PASSWORD environment variables for automatic login, or visit the loginUrl and choose Sign In or Join. After signing in, use status to verify.",
   };
 }
 
@@ -375,7 +375,7 @@ async function performLogin(
   const p = await getPage();
 
   try {
-    await p.goto(`${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`, {
+    await p.goto(`${MARRIOTT_BASE_URL}/default.mi`, {
       waitUntil: "domcontentloaded",
     });
     await randomDelay(1000, 2000);
@@ -388,7 +388,9 @@ async function performLogin(
     // Marriott may load the homepage with the sign-in dialog closed.
     if (!(await emailField.isVisible().catch(() => false))) {
       const signInTrigger = p
-        .locator('a:has-text("Sign In"), button:has-text("Sign In"), [aria-label*="Sign In" i]')
+        .locator(
+          'a:has-text("Sign In or Join"), a:has-text("Sign In"), button:has-text("Sign In"), [aria-label*="Sign In" i]'
+        )
         .first();
       await signInTrigger.click({ timeout: 5000 }).catch(() => {});
     }
@@ -439,7 +441,7 @@ async function performLogin(
     return {
       success: true,
       message: "Login successful",
-      loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
+      loginUrl: `${MARRIOTT_BASE_URL}/default.mi`,
       instructions: "Successfully logged in. Use status to verify.",
     };
   } catch (error) {
@@ -447,9 +449,9 @@ async function performLogin(
     return {
       success: false,
       message: `Login attempt: ${msg}`,
-      loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
+      loginUrl: `${MARRIOTT_BASE_URL}/default.mi`,
       instructions:
-        "Automatic login encountered an issue. Try visiting the loginUrl manually, then use status to verify.",
+        "Automatic login encountered an issue. Try visiting the loginUrl manually, choose Sign In or Join, then use status to verify.",
     };
   }
 }
