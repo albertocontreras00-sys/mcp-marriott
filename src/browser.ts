@@ -236,6 +236,28 @@ async function getPage(): Promise<Page> {
   return p;
 }
 
+async function isAccessDeniedPage(p: Page): Promise<boolean> {
+  const url = p.url().toLowerCase();
+  if (url.includes("access-denied") || url.includes("accessdenied")) {
+    return true;
+  }
+
+  const title = (await p.title().catch(() => "")).toLowerCase();
+  if (title.includes("access denied") || title.includes("request unsuccessful")) {
+    return true;
+  }
+
+  const bodyText = (
+    await p.locator("body").innerText({ timeout: 5000 }).catch(() => "")
+  ).toLowerCase();
+
+  return (
+    bodyText.includes("access denied") ||
+    bodyText.includes("pardon our interruption") ||
+    bodyText.includes("request unsuccessful")
+  );
+}
+
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function checkLoginStatus(): Promise<SessionInfo> {
@@ -251,7 +273,11 @@ export async function checkLoginStatus(): Promise<SessionInfo> {
 
     // Check if redirected to login page
     const url = p.url();
-    if (url.includes("signin") || url.includes("login")) {
+    if (
+      url.includes("signin") ||
+      url.includes("login") ||
+      (await isAccessDeniedPage(p))
+    ) {
       const info: SessionInfo = {
         isLoggedIn: false,
         lastUpdated: new Date().toISOString(),
@@ -282,6 +308,16 @@ export async function checkLoginStatus(): Promise<SessionInfo> {
       )
       .catch(() => null);
 
+    const hasMemberIdentity = Boolean(userName || bonvoyNumber || tier);
+    if (!hasMemberIdentity) {
+      const info: SessionInfo = {
+        isLoggedIn: false,
+        lastUpdated: new Date().toISOString(),
+      };
+      await saveSessionInfo(info);
+      return info;
+    }
+
     const info: SessionInfo = {
       isLoggedIn: true,
       userName: userName || undefined,
@@ -302,6 +338,7 @@ export async function checkLoginStatus(): Promise<SessionInfo> {
 }
 
 export async function initiateLogin(): Promise<{
+  success: boolean;
   message: string;
   loginUrl: string;
   instructions: string;
@@ -314,6 +351,7 @@ export async function initiateLogin(): Promise<{
   }
 
   return {
+    success: false,
     message: "Manual login required",
     loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
     instructions:
@@ -324,7 +362,7 @@ export async function initiateLogin(): Promise<{
 async function performLogin(
   email: string,
   password: string
-): Promise<{ message: string; loginUrl: string; instructions: string }> {
+): Promise<{ success: boolean; message: string; loginUrl: string; instructions: string }> {
   const { context: ctx } = await initBrowser();
   const p = await getPage();
 
@@ -363,13 +401,21 @@ async function performLogin(
     await randomDelay(1000, 2000);
 
     const url = p.url();
-    if (url.includes("signin") || url.includes("login")) {
+    if (url.includes("signin") || url.includes("login") || (await isAccessDeniedPage(p))) {
       throw new Error("Login failed. Please check credentials or try manual login.");
+    }
+
+    const verifiedStatus = await checkLoginStatus();
+    if (!verifiedStatus.isLoggedIn) {
+      throw new Error(
+        "Login did not produce a verifiable Marriott member session. MFA, CAPTCHA, device verification, or anti-bot protection may still be required."
+      );
     }
 
     await saveCookies(ctx);
 
     return {
+      success: true,
       message: "Login successful",
       loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
       instructions: "Successfully logged in. Use status to verify.",
@@ -377,6 +423,7 @@ async function performLogin(
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return {
+      success: false,
       message: `Login attempt: ${msg}`,
       loginUrl: `${MARRIOTT_BASE_URL}/loyalty/loginPage.mi`,
       instructions:

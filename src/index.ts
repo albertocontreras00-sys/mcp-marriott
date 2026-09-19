@@ -488,7 +488,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify(
                 {
-                  success: true,
                   ...result,
                 },
                 null,
