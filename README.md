@@ -107,6 +107,43 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
+## Remote Vercel deployment
+
+The production deployment uses Streamable HTTP:
+
+- Production URL: `https://marriott-mcp.vercel.app`
+- MCP endpoint: `https://marriott-mcp.vercel.app/api/mcp`
+- Authentication: `Authorization: Bearer <MCP_AUTH_TOKEN>`
+- Session storage: private Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
+- Browser: `playwright-core` with `@sparticuz/chromium`
+
+Set these environment variables in Vercel. Do not commit their values:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MCP_AUTH_TOKEN` | Yes | Bearer token required by `/api/mcp` |
+| `BLOB_READ_WRITE_TOKEN` | Yes | Automatically provided by the private Blob store |
+| `MARRIOTT_EMAIL` | Recommended | Enables automatic Marriott login |
+| `MARRIOTT_PASSWORD` | Recommended | Enables automatic Marriott login |
+| `MARRIOTT_SESSION_STATE_PATH` | No | Defaults to `marriott/storage-state.json` |
+| `MARRIOTT_SESSION_INFO_PATH` | No | Defaults to `marriott/session.json` |
+| `PLAYWRIGHT_EXECUTABLE_PATH` | No | Local browser override; Vercel uses Sparticuz Chromium |
+
+The server persists the complete Playwright storage state, not just cookies. If Marriott requires MFA, CAPTCHA, device verification, or another interactive step, `login` reports that requirement and `status` remains unauthenticated until a verifiable member session exists.
+
+### Connect it to ChatGPT
+
+In ChatGPT web, enable Developer Mode if your plan/workspace requires it, then create a custom MCP app from Settings → Apps (workspace admins may need to enable custom apps first). Use:
+
+- Endpoint URL: `https://marriott-mcp.vercel.app/api/mcp`
+- Authentication: bearer/API key header
+- Header name: `Authorization`
+- Header value: `Bearer <the value stored in MCP_AUTH_TOKEN>`
+
+Scan the tools, create the draft app, then select it from the tools menu in a new chat. The server exposes all 16 tools listed below. Keep confirmation enabled for booking, modification, cancellation, and points redemption actions.
+
+OpenAI's current custom-app flow is documented in [Developer mode and MCP apps in ChatGPT](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt).
+
 ## Usage Examples
 
 ### Search hotels
@@ -141,7 +178,7 @@ Show me my upcoming reservations and cancel the one in Chicago
 
 ## Session Management
 
-Cookies are saved to `~/.striderlabs/marriott/` so sessions persist between runs. To log out:
+Local stdio runs save cookies and storage state to `~/.striderlabs/marriott/`. The Vercel deployment saves them in the private Blob store so they persist across serverless invocations. To log out:
 
 ```
 Use the logout tool
@@ -180,6 +217,8 @@ node dist/index.js
 |----------|-------------|
 | `MARRIOTT_EMAIL` | Marriott Bonvoy account email |
 | `MARRIOTT_PASSWORD` | Marriott Bonvoy account password |
+| `MCP_AUTH_TOKEN` | Bearer token for the remote MCP endpoint |
+| `BLOB_READ_WRITE_TOKEN` | Private Vercel Blob session storage token |
 
 ## License
 
