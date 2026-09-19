@@ -11,6 +11,8 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -36,7 +38,8 @@ import {
 } from "./browser.js";
 import { loadSessionInfo, clearAuthData, getConfigDir } from "./auth.js";
 
-// Initialize server
+// Initialize a fresh server for each transport connection.
+export function createMarriottServer(): Server {
 const server = new Server(
   {
     name: "strider-marriott",
@@ -445,7 +448,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "status": {
-        const sessionInfo = loadSessionInfo();
+        const sessionInfo = await loadSessionInfo();
         const liveStatus = await checkLoginStatus();
 
         return {
@@ -497,7 +500,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "logout": {
-        clearAuthData();
+        await clearAuthData();
         await closeBrowser();
 
         return {
@@ -1038,15 +1041,24 @@ server.onclose = async () => {
   await closeBrowser();
 };
 
+return server;
+}
+
 // Start server
 async function main() {
+  const server = createMarriottServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Strider Marriott MCP server running");
   console.error(`Config directory: ${getConfigDir()}`);
 }
 
-main().catch((error) => {
-  console.error("Failed to start server:", error);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  main().catch((error) => {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  });
+}

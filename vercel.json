@@ -1,0 +1,16 @@
+{
+  "outputDirectory": "public",
+  "functions": {
+    "api/mcp.ts": {
+      "memory": 2048,
+      "maxDuration": 300,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/mcp",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
+  ]
+}

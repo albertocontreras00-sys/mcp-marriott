@@ -4,10 +4,17 @@
  * Playwright-based browser automation for Marriott hotel booking operations.
  */
 
-import { chromium, Browser, BrowserContext, Page } from "playwright";
+import chromium from "@sparticuz/chromium";
+import {
+  chromium as playwrightChromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "playwright-core";
 import {
   saveCookies,
   loadCookies,
+  loadStorageState,
   saveSessionInfo,
   type SessionInfo,
 } from "./auth.js";
@@ -158,9 +165,14 @@ async function initBrowser(): Promise<{
     return { browser, context, page };
   }
 
-  browser = await chromium.launch({
+  const executablePath =
+    process.env.PLAYWRIGHT_EXECUTABLE_PATH || (await chromium.executablePath());
+
+  browser = await playwrightChromium.launch({
     headless: true,
+    executablePath,
     args: [
+      ...chromium.args,
       "--disable-blink-features=AutomationControlled",
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -172,6 +184,8 @@ async function initBrowser(): Promise<{
     ],
   });
 
+  const storageState = await loadStorageState();
+
   context = await browser.newContext({
     userAgent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -181,6 +195,7 @@ async function initBrowser(): Promise<{
     extraHTTPHeaders: {
       "Accept-Language": "en-US,en;q=0.9",
     },
+    ...(storageState ? { storageState } : {}),
   });
 
   // Patch navigator to avoid bot detection
@@ -190,8 +205,10 @@ async function initBrowser(): Promise<{
     Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
   });
 
-  // Load saved cookies if available
-  await loadCookies(context);
+  // Load older cookie-only local sessions if available.
+  if (!storageState) {
+    await loadCookies(context);
+  }
 
   page = await context.newPage();
   page.setDefaultTimeout(DEFAULT_TIMEOUT);
@@ -239,7 +256,7 @@ export async function checkLoginStatus(): Promise<SessionInfo> {
         isLoggedIn: false,
         lastUpdated: new Date().toISOString(),
       };
-      saveSessionInfo(info);
+      await saveSessionInfo(info);
       return info;
     }
 
@@ -274,7 +291,7 @@ export async function checkLoginStatus(): Promise<SessionInfo> {
     };
 
     await saveCookies(ctx);
-    saveSessionInfo(info);
+    await saveSessionInfo(info);
     return info;
   } catch (error) {
     return {
