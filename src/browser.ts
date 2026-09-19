@@ -381,29 +381,42 @@ async function performLogin(
     await randomDelay(1000, 2000);
     await assertMarriottAccessible(p, "start login");
 
-    // Fill email
-    const emailField = await p.waitForSelector(
-      'input[name="email"], input[type="email"], input[placeholder*="Email" i], input[placeholder*="Member" i], input[id*="email" i], input[id*="member" i], input[id*="username" i], #email, #username',
-      { timeout: 10000 }
-    );
+    const emailSelector =
+      'input[name="email"], input[type="email"], input[placeholder*="Email" i], input[placeholder*="Member" i], input[id*="email" i], input[id*="member" i], input[id*="username" i], #email, #username';
+    const emailField = p.locator(emailSelector).first();
+
+    // Marriott may load the homepage with the sign-in dialog closed.
+    if (!(await emailField.isVisible().catch(() => false))) {
+      const signInTrigger = p
+        .locator('a:has-text("Sign In"), button:has-text("Sign In"), [aria-label*="Sign In" i]')
+        .first();
+      await signInTrigger.click({ timeout: 5000 }).catch(() => {});
+    }
+
+    // Fill email/member number
+    await emailField.waitFor({ state: "visible", timeout: 10000 });
     await emailField.click();
     await emailField.fill(email);
     await randomDelay(300, 700);
 
     // Fill password
-    const passwordField = await p.waitForSelector(
-      'input[name="password"], input[type="password"], input[placeholder*="Password" i], input[id*="password" i], #password',
-      { timeout: 10000 }
-    );
+    const passwordField = p
+      .locator(
+        'input[name="password"], input[type="password"], input[placeholder*="Password" i], input[id*="password" i], #password'
+      )
+      .first();
+    await passwordField.waitFor({ state: "visible", timeout: 10000 });
     await passwordField.click();
     await passwordField.fill(password);
     await randomDelay(300, 700);
 
     // Submit
-    const submitButton = await p.waitForSelector(
-      'button[type="submit"], input[type="submit"], .l-signin-btn, [data-testid="signin-submit"], button:has-text("Sign In"), button:has-text("SIGN IN")',
-      { timeout: 10000 }
-    );
+    const submitButton = p
+      .locator(
+        'button[type="submit"], input[type="submit"], .l-signin-btn, [data-testid="signin-submit"], button:has-text("Sign In"), button:has-text("SIGN IN")'
+      )
+      .last();
+    await submitButton.waitFor({ state: "visible", timeout: 10000 });
     await submitButton.click();
 
     await p.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 15000 });
